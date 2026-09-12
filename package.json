@@ -1,0 +1,14 @@
+{
+  "name": "d3-chart-studio",
+  "version": "1.0.0",
+  "description": "JSON-driven D3.js chart generator with a small Express API backend, containerized and deployed to Google Cloud Run via GitHub Actions CI/CD.",
+  "main": "src/server/index.js",
+  "scripts": {
+    "start": "node src/server/index.js",
+    "dev": "node src/server/index.js"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}

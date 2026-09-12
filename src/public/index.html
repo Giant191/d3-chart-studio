@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>D3 Chart Studio</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+  <style>
+    :root {
+      --navy: #1e2761;
+      --accent: #3d5aff;
+      --bg: #f5f7fb;
+      --card: #ffffff;
+      --border: #e3e8f0;
+      --text: #2a2f3a;
+      --muted: #6b7280;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, "Segoe UI", "PingFang TC", "Microsoft JhengHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+    header {
+      background: var(--navy);
+      color: #fff;
+      padding: 28px 32px;
+    }
+    header h1 { margin: 0 0 4px; font-size: 22px; }
+    header p { margin: 0; color: #b9c2e0; font-size: 14px; }
+    main {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 28px 20px 60px;
+      display: grid;
+      grid-template-columns: 380px 1fr;
+      gap: 20px;
+    }
+    @media (max-width: 820px) {
+      main { grid-template-columns: 1fr; }
+    }
+    .panel {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 18px;
+    }
+    .panel h2 { font-size: 15px; margin: 0 0 12px; color: var(--navy); }
+    .sample-buttons { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+    button {
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: #fff;
+      color: var(--navy);
+      border-radius: 6px;
+      padding: 6px 12px;
+      font-size: 13px;
+    }
+    button.primary {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+      font-weight: 600;
+    }
+    textarea {
+      width: 100%;
+      height: 320px;
+      font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+      font-size: 12.5px;
+      padding: 10px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      resize: vertical;
+    }
+    .error-box {
+      margin-top: 10px;
+      color: #b3261e;
+      font-size: 12.5px;
+      white-space: pre-wrap;
+      display: none;
+    }
+    #chart { width: 100%; min-height: 420px; }
+    .cs-chart-title { font-size: 15px; font-weight: 700; fill: #1e2761; }
+    .cs-axis text { font-size: 10.5px; fill: #6b7280; }
+    .cs-axis path, .cs-axis line { stroke: #d7deec; }
+    .cs-legend { font-size: 11px; fill: #333; }
+    .cs-tooltip {
+      position: absolute;
+      pointer-events: none;
+      background: #1e2761;
+      color: #fff;
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      line-height: 1.4;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+    }
+    footer {
+      text-align: center;
+      color: var(--muted);
+      font-size: 12px;
+      padding: 20px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>D3 Chart Studio</h1>
+    <p>JSON設定驅動的圖表產生器　|　D3.js v7 + Express + Docker + Cloud Run CI/CD 練習專案</p>
+  </header>
+
+  <main>
+    <section class="panel">
+      <h2>圖表設定 (JSON)</h2>
+      <div class="sample-buttons">
+        <button data-sample="bar">長條圖範例</button>
+        <button data-sample="pie">圓餅圖範例</button>
+        <button data-sample="bubble">氣泡圖範例</button>
+        <button data-sample="line">折線圖範例</button>
+      </div>
+      <textarea id="config-input" spellcheck="false"></textarea>
+      <div style="margin-top:12px;">
+        <button class="primary" id="render-btn">產生圖表</button>
+      </div>
+      <div class="error-box" id="error-box"></div>
+    </section>
+
+    <section class="panel">
+      <h2>預覽</h2>
+      <div id="chart"></div>
+    </section>
+  </main>
+
+  <footer>D3 Chart Studio — 個人練習專案，容器化並部署於 Google Cloud Run</footer>
+
+  <script src="chart-engine.js"></script>
+  <script>
+    const input = document.getElementById("config-input");
+    const errorBox = document.getElementById("error-box");
+    let samples = {};
+
+    async function loadSamples() {
+      const res = await fetch("/api/charts/samples");
+      samples = await res.json();
+      input.value = JSON.stringify(samples.bar, null, 2);
+      draw();
+    }
+
+    async function draw() {
+      errorBox.style.display = "none";
+      let config;
+      try {
+        config = JSON.parse(input.value);
+      } catch (e) {
+        errorBox.textContent = "JSON 格式錯誤：" + e.message;
+        errorBox.style.display = "block";
+        return;
+      }
+
+      try {
+        const res = await fetch("/api/charts/validate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(config),
+        });
+        const result = await res.json();
+        if (!result.valid) {
+          errorBox.textContent = "設定驗證失敗：\n" + result.errors.join("\n");
+          errorBox.style.display = "block";
+          return;
+        }
+      } catch (e) {
+        errorBox.textContent = "無法連線到驗證 API：" + e.message;
+        errorBox.style.display = "block";
+        return;
+      }
+
+      try {
+        ChartEngine.renderChart("#chart", config);
+      } catch (e) {
+        errorBox.textContent = "渲染錯誤：" + e.message;
+        errorBox.style.display = "block";
+      }
+    }
+
+    document.querySelectorAll("[data-sample]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const key = btn.getAttribute("data-sample");
+        input.value = JSON.stringify(samples[key], null, 2);
+        draw();
+      });
+    });
+
+    document.getElementById("render-btn").addEventListener("click", draw);
+    loadSamples();
+  </script>
+</body>
+</html>
