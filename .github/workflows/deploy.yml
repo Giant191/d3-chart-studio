@@ -8,7 +8,7 @@ env:
   PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
   REGION: asia-east1
   SERVICE_NAME: d3-chart-studio
-  REPO_NAME: d3-chart-studio-repo
+  REPO_NAME: cloud-run-source-deploy
 
 jobs:
   build-and-deploy:
