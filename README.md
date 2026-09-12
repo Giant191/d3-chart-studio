@@ -50,3 +50,4 @@ Node.js、Express、D3.js v7、Docker、GitHub Actions、Google Cloud Run、Arti
 ## 部署
 
 完整的雲端部署步驟（含 GCP 帳號設定、GitHub Secrets 設定）請見 [`DEPLOY_GUIDE.md`](./DEPLOY_GUIDE.md)。
+;
